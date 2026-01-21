@@ -24,9 +24,9 @@ esp32-based door sensor that reports state changes via HTTP webhook
 2. Configure clangd with the correct toolchain paths, e.g. in `.vscode/settings.json`:
    ```json
    {
-       "clangd.path": "~/.espressif/tools/esp-clang/<VERSION>/esp-clang/bin/clangd",
+       "clangd.path": "/Users/<USERNAME>/.espressif/tools/esp-clang/<VERSION>/esp-clang/bin/clangd",
        "clangd.arguments": [
-           "--query-driver=~/.espressif/tools/xtensa-esp-elf/<VERSION>/xtensa-esp-elf/bin/xtensa-esp32-elf-*"
+           "--query-driver=/Users/<USERNAME>/.espressif/tools/xtensa-esp-elf/<VERSION>/xtensa-esp-elf/bin/xtensa-esp32-elf-*"
        ]
    }
    ```
