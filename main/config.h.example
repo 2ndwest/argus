@@ -1,0 +1,11 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define WIFI_SSID "your-wifi-ssid"
+#define WIFI_PASS "your-wifi-password"
+
+#define STATE_CHANGE_URL "https://<your>.convex.site/ingest-door-state/"
+#define WEBHOOK_SECRET "your-webhook-secret"
+#define DOOR_ID "your-door-id"
+
+#endif // CONFIG_H
