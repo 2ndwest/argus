@@ -36,6 +36,8 @@ esp32-based door sensor that reports state changes via HTTP webhook
    - ESP32-S2/S3 (Xtensa): `xtensa-esp32s2-elf-*` / `xtensa-esp32s3-elf-*`
    - ESP32-C3/C6/H2 (RISC-V): `riscv32-esp-elf-*`
 
+   See [Espressif's LSP support documentation](https://docs.espressif.com/projects/espressif-ide/en/latest/additionalfeatures/clangd_cdt_support.html) for more details.
+
 3. Find your installed versions:
    ```bash
    ls ~/.espressif/tools/esp-clang/
