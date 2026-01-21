@@ -3,7 +3,7 @@
 #include "freertos/task.h"
 #include "esp_timer.h"
 #include "gpio_cxx.hpp"
-#include "wifi.hpp"
+#include "wifi.h"
 #include "config.h"
 
 #define DEBOUNCE_MS 1200
