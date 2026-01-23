@@ -5,11 +5,15 @@
 #include "gpio_cxx.hpp"
 #include "wifi.h"
 #include "config.h"
+#include "esp_adc/adc_oneshot.h"
 
 #define DEBOUNCE_MS 1200
 
-const auto DOOR_GPIO = idf::GPIONum(4);
 const auto INTERNAL_LED_GPIO = idf::GPIONum(2);
+
+// Hall sensor on GPIO 33 = ADC1 channel 5
+#define HALL_ADC_CHANNEL ADC_CHANNEL_5
+#define HALL_THRESHOLD 2500
 
 enum class DoorState { OPEN, CLOSED };
 
@@ -45,24 +49,39 @@ extern "C" void app_main() {
 
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        idf::GPIOInput door_sensor(DOOR_GPIO);
-        door_sensor.set_pull_mode(idf::GPIOPullMode::PULLUP());
+        // Configure ADC1 for Hall sensor.
+        adc_oneshot_unit_handle_t adc1_handle;
+        adc_oneshot_unit_init_cfg_t init_config = {
+            .unit_id = ADC_UNIT_1,
+            .clk_src = ADC_RTC_CLK_SRC_DEFAULT,
+            .ulp_mode = ADC_ULP_MODE_DISABLE,
+        };
+        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &adc1_handle));
+
+        adc_oneshot_chan_cfg_t channel_config = {
+            .atten = ADC_ATTEN_DB_12,  // Full range 0-3.3V
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+        };
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, HALL_ADC_CHANNEL, &channel_config));
+
+        printf("[!] ADC configured, reading Hall sensor...\n");
 
         // Read initial state
-        bool is_high = door_sensor.get_level() == idf::GPIOLevel::HIGH;
-        DoorState confirmed_state = is_high ? DoorState::OPEN : DoorState::CLOSED;
+        int raw_value = 0;
+        adc_oneshot_read(adc1_handle, HALL_ADC_CHANNEL, &raw_value);
+        DoorState confirmed_state = (raw_value > HALL_THRESHOLD) ? DoorState::CLOSED : DoorState::OPEN;
         DoorState pending_state = confirmed_state;
         int64_t pending_state_start_time = 0;
 
-        printf("[!] Initial state: %s\n", confirmed_state == DoorState::OPEN ? "OPEN" : "CLOSED");
+        printf("[!] Initial Hall reading: %d, state: %s\n", raw_value,
+               confirmed_state == DoorState::OPEN ? "OPEN" : "CLOSED");
 
         while (true) {
-            idf::GPIOLevel level = door_sensor.get_level();
-            is_high = level == idf::GPIOLevel::HIGH;
-            DoorState current_reading = is_high ? DoorState::OPEN : DoorState::CLOSED;
+            adc_oneshot_read(adc1_handle, HALL_ADC_CHANNEL, &raw_value);
+            DoorState current_reading = (raw_value > HALL_THRESHOLD) ? DoorState::CLOSED : DoorState::OPEN;
 
-            // Update LED to match confirmed state
-            if (confirmed_state == DoorState::OPEN) {
+            // Update LED to match confirmed state (LED on = CLOSED/locked, LED off = OPEN)
+            if (confirmed_state == DoorState::CLOSED) {
                 led.set_high();
             } else {
                 led.set_low();
@@ -75,9 +94,10 @@ extern "C" void app_main() {
                     // This is a new potential state, start timing
                     pending_state = current_reading;
                     pending_state_start_time = esp_timer_get_time();
-                    printf("[~] Potential state change detected: %s -> %s\n",
+                    printf("[~] Potential state change detected: %s -> %s (raw: %d)\n",
                            confirmed_state == DoorState::OPEN ? "OPEN" : "CLOSED",
-                           pending_state == DoorState::OPEN ? "OPEN" : "CLOSED");
+                           pending_state == DoorState::OPEN ? "OPEN" : "CLOSED",
+                           raw_value);
                 } else {
                     // Same pending state, check if debounce time has elapsed
                     int64_t elapsed_ms = (esp_timer_get_time() - pending_state_start_time) / 1000;
