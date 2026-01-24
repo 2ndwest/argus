@@ -7,7 +7,7 @@
 #include "config.h"
 #include "esp_adc/adc_oneshot.h"
 
-#define DEBOUNCE_MS 500
+#define DEBOUNCE_MS 250
 
 const auto INTERNAL_LED_GPIO = idf::GPIONum(2);
 
@@ -15,17 +15,17 @@ const auto INTERNAL_LED_GPIO = idf::GPIONum(2);
 #define HALL_ADC_CHANNEL ADC_CHANNEL_5
 #define HALL_THRESHOLD 2500
 
-enum class DoorState { OPEN, CLOSED };
+enum class LockState { UNLOCKED, LOCKED };
 
-void send_state_change(DoorState new_state) {
-    printf("[!] State changed to %s, sending HTTP POST...\n", new_state == DoorState::OPEN ? "OPEN" : "CLOSED");
+void send_state_change(LockState new_state) {
+    printf("[!] State changed to %s, sending HTTP POST...\n", new_state == LockState::LOCKED ? "LOCKED" : "UNLOCKED");
 
     // Build JSON payload
     char body[64];
     snprintf(body, sizeof(body),
-             "{\"doorId\":\"%s\",\"isOpen\":%s}",
-             DOOR_ID,
-             new_state == DoorState::OPEN ? "true" : "false");
+             "{\"bathroomId\":\"%s\",\"isLocked\":%s}",
+             BATHROOM_ID,
+             new_state == LockState::LOCKED ? "true" : "false");
 
     int status = http_post(STATE_CHANGE_URL, body, "application/json", "x-webhook-secret", WEBHOOK_SECRET);
     if (status != 200) {
@@ -69,19 +69,19 @@ extern "C" void app_main() {
         // Read initial state
         int raw_value = 0;
         adc_oneshot_read(adc1_handle, HALL_ADC_CHANNEL, &raw_value);
-        DoorState confirmed_state = (raw_value > HALL_THRESHOLD) ? DoorState::CLOSED : DoorState::OPEN;
-        DoorState pending_state = confirmed_state;
+        LockState confirmed_state = (raw_value > HALL_THRESHOLD) ? LockState::LOCKED : LockState::UNLOCKED;
+        LockState pending_state = confirmed_state;
         int64_t pending_state_start_time = 0;
 
         printf("[!] Initial Hall reading: %d, state: %s\n", raw_value,
-               confirmed_state == DoorState::OPEN ? "OPEN" : "CLOSED");
+               confirmed_state == LockState::LOCKED ? "LOCKED" : "UNLOCKED");
 
         while (true) {
             adc_oneshot_read(adc1_handle, HALL_ADC_CHANNEL, &raw_value);
-            DoorState current_reading = (raw_value > HALL_THRESHOLD) ? DoorState::CLOSED : DoorState::OPEN;
+            LockState current_reading = (raw_value > HALL_THRESHOLD) ? LockState::LOCKED : LockState::UNLOCKED;
 
-            // Update LED to match confirmed state (LED on = CLOSED/locked, LED off = OPEN)
-            if (confirmed_state == DoorState::CLOSED) {
+            // Update LED to match confirmed state (LED on = locked, LED off = unlocked)
+            if (confirmed_state == LockState::LOCKED) {
                 led.set_high();
             } else {
                 led.set_low();
@@ -95,8 +95,8 @@ extern "C" void app_main() {
                     pending_state = current_reading;
                     pending_state_start_time = esp_timer_get_time();
                     printf("[~] Potential state change detected: %s -> %s (raw: %d)\n",
-                           confirmed_state == DoorState::OPEN ? "OPEN" : "CLOSED",
-                           pending_state == DoorState::OPEN ? "OPEN" : "CLOSED",
+                           confirmed_state == LockState::LOCKED ? "LOCKED" : "UNLOCKED",
+                           pending_state == LockState::LOCKED ? "LOCKED" : "UNLOCKED",
                            raw_value);
                 } else {
                     // Same pending state, check if debounce time has elapsed
@@ -111,7 +111,7 @@ extern "C" void app_main() {
                 // Reading matches confirmed state, reset pending state
                 if (pending_state != confirmed_state)
                     printf("[~] State change cancelled, back to %s\n",
-                           confirmed_state == DoorState::OPEN ? "OPEN" : "CLOSED");
+                           confirmed_state == LockState::LOCKED ? "LOCKED" : "UNLOCKED");
                 pending_state = confirmed_state;
             }
 

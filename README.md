@@ -1,6 +1,6 @@
 # argus
 
-esp32-based door sensor that reports state changes via HTTP webhook
+esp32-based door lock sensor that reports state changes via HTTP webhook
 
 ## build setup
 

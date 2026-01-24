@@ -4,8 +4,8 @@
 #define WIFI_SSID "your-wifi-ssid"
 #define WIFI_PASS "your-wifi-password"
 
-#define STATE_CHANGE_URL "https://<your>.convex.site/ingest-door-state/"
+#define STATE_CHANGE_URL "https://<your>.convex.site/ingest-lock-state/"
 #define WEBHOOK_SECRET "your-webhook-secret"
-#define DOOR_ID "your-door-id"
+#define BATHROOM_ID "your-bathroom-id"
 
 #endif // CONFIG_H
