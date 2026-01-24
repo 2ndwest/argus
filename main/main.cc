@@ -7,7 +7,7 @@
 #include "config.h"
 #include "esp_adc/adc_oneshot.h"
 
-#define DEBOUNCE_MS 1200
+#define DEBOUNCE_MS 500
 
 const auto INTERNAL_LED_GPIO = idf::GPIONum(2);
 
