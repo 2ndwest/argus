@@ -7,7 +7,7 @@
 #include "config.h"
 #include "esp_adc/adc_oneshot.h"
 
-#define DEBOUNCE_MS 250
+#define DEBOUNCE_MS 100
 
 const auto INTERNAL_LED_GPIO = idf::GPIONum(2);
 
@@ -64,6 +64,8 @@ extern "C" void app_main() {
         };
         ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, HALL_ADC_CHANNEL, &channel_config));
 
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
         printf("[!] ADC configured, reading Hall sensor...\n");
 
         // Read initial state
@@ -75,6 +77,9 @@ extern "C" void app_main() {
 
         printf("[!] Initial Hall reading: %d, state: %s\n", raw_value,
                confirmed_state == LockState::LOCKED ? "LOCKED" : "UNLOCKED");
+
+        // Post initial state to server
+        send_state_change(confirmed_state);
 
         while (true) {
             adc_oneshot_read(adc1_handle, HALL_ADC_CHANNEL, &raw_value);
