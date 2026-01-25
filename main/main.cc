@@ -2,12 +2,20 @@
 #include "freertos/FreeRTOS.h" // IWYU pragma: keep
 #include "freertos/task.h"
 #include "esp_timer.h"
+#include "esp_system.h"
 #include "gpio_cxx.hpp"
 #include "wifi.h"
 #include "config.h"
 #include "esp_adc/adc_oneshot.h"
 
 #define DEBOUNCE_MS 100
+#define AUTO_RESTART_MINUTES 30
+
+// Timer callback to restart the device
+static void auto_restart_callback(void* arg) {
+    printf("[!] Auto-restart timer fired, restarting...\n");
+    esp_restart();
+}
 
 const auto INTERNAL_LED_GPIO = idf::GPIONum(2);
 
@@ -38,17 +46,25 @@ void send_state_change(LockState new_state) {
 extern "C" void app_main() {
     printf("[!] Starting...\n");
 
+    // Set up auto-restart timer
+    const esp_timer_create_args_t restart_timer_args = {
+        .callback = &auto_restart_callback,
+        .arg = nullptr,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "auto_restart",
+        .skip_unhandled_events = false,
+    };
+    esp_timer_handle_t restart_timer;
+    ESP_ERROR_CHECK(esp_timer_create(&restart_timer_args, &restart_timer));
+    ESP_ERROR_CHECK(esp_timer_start_once(restart_timer, AUTO_RESTART_MINUTES * 60 * 1000000ULL));
+    printf("[!] Auto-restart scheduled in %d minutes\n", AUTO_RESTART_MINUTES);
+
     idf::GPIO_Output led(INTERNAL_LED_GPIO);
 
     if (!wifi_connect(WIFI_SSID, WIFI_PASS)) {
         printf("[!] Failed to connect to wifi!\n");
         led.set_high();
     } else {
-        auto response = http_get("https://example.com");
-        printf("[!] Test request response: %s\n", response.c_str());
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
         // Configure ADC1 for Hall sensor.
         adc_oneshot_unit_handle_t adc1_handle;
         adc_oneshot_unit_init_cfg_t init_config = {
@@ -66,7 +82,7 @@ extern "C" void app_main() {
 
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        printf("[!] ADC configured, reading Hall sensor...\n");
+        printf("[!] ADC configured, reading hall sensor...\n");
 
         // Read initial state
         int raw_value = 0;
