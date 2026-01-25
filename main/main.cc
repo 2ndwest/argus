@@ -21,7 +21,6 @@ const auto INTERNAL_LED_GPIO = idf::GPIONum(2);
 
 // Hall sensor on GPIO 33 = ADC1 channel 5
 #define HALL_ADC_CHANNEL ADC_CHANNEL_5
-#define HALL_THRESHOLD 2500
 
 enum class LockState { UNLOCKED, LOCKED };
 

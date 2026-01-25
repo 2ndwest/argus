@@ -8,4 +8,6 @@
 #define WEBHOOK_SECRET "your-webhook-secret"
 #define BATHROOM_ID "your-bathroom-id"
 
+#define HALL_THRESHOLD 2500
+
 #endif // CONFIG_H
